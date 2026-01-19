@@ -14,6 +14,7 @@
  */
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -23,9 +24,11 @@ const char* ssid = "UHAMKA-FTII";           // Ganti dengan SSID WiFi Anda
 const char* password = "buyahamka123";   // Ganti dengan password WiFi Anda
 
 // Server URL
-// PENTING: Gunakan endpoint /api/esp32/temperature untuk format {"T7": value, "T8": value, ...}
-// JANGAN gunakan /api/sensors (endpoint lama untuk format compartment-based)
-const char* serverUrl = "http://10.10.53.162:3000/api/esp32/temperature";  // Ganti dengan IP server Anda
+// Railway Production Backend (HTTPS)
+const char* serverUrl = "https://iot-desalinasi-production.up.railway.app/api/esp32/temperature";
+
+// WiFi Secure Client untuk HTTPS
+WiFiClientSecure secureClient;
 
 // Pin definitions for DS18B20 sensors
 #define PIN_T7  22
@@ -82,7 +85,12 @@ void setup() {
   
   // Connect to WiFi
   connectWiFi();
-}
+  
+  // Setup HTTPS client (skip certificate verification)
+  secureClient.setInsecure();
+  
+  Serial.println("\n✓ Ready to send data!");
+  Serial.println("📡 Target: Railway Production Backend\n");
 
 void loop() {
   // Check WiFi connection
@@ -190,10 +198,11 @@ void sendTemperatureData() {
   Serial.printf("\n📤 Sending to server (%d valid sensors):\n", validSensors);
   Serial.println(jsonPayload);
   
-  // Send HTTP POST
+  // Send HTTPS POST
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    http.begin(serverUrl);
+    http.begin(secureClient, serverUrl);
+    http.setTimeout(15000); // 15 second timeout
     http.addHeader("Content-Type", "application/json");
     
     int httpResponseCode = http.POST(jsonPayload);

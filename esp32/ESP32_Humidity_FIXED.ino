@@ -20,6 +20,7 @@
  */
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <DHT.h>
 #include <ArduinoJson.h>
@@ -29,9 +30,12 @@ const char* ssid = "UHAMKA-FTII";           // Ganti dengan SSID WiFi Anda
 const char* password = "buyahamka123";      // Ganti dengan password WiFi Anda
 
 // ========== KONFIGURASI SERVER ==========
-// Dua endpoint terpisah untuk temperature dan humidity
-const char* tempServerUrl = "http://10.10.53.162:3000/api/esp32/temperature"; //seharunya ini ke humidity aja
-const char* humidServerUrl = "http://10.10.53.162:3000/api/esp32/humidity";
+// Railway Production Backend (HTTPS)
+const char* tempServerUrl = "https://iot-desalinasi-production.up.railway.app/api/esp32/temperature";
+const char* humidServerUrl = "https://iot-desalinasi-production.up.railway.app/api/esp32/humidity";
+
+// WiFi Secure Client untuk HTTPS
+WiFiClientSecure secureClient;
 
 // ========== PIN DEFINITIONS ==========
 #define PIN_SENSOR1  4    // T1/RH1
@@ -102,8 +106,12 @@ void setup() {
   // Connect to WiFi
   connectWiFi();
   
+  // Setup HTTPS client (skip certificate verification)
+  secureClient.setInsecure();
+  
   Serial.println("\n✓ Setup completed!");
-  Serial.println("Starting sensor monitoring...\n");
+  Serial.println("Starting sensor monitoring...");
+  Serial.println("📡 Sending to: Railway Production Backend\n");
 }
 
 void loop() {
@@ -242,10 +250,11 @@ void sendTemperatureData() {
   Serial.printf("\n📤 Sending Temperature (%d sensors):\n", validSensors);
   Serial.println(jsonPayload);
   
-  // Send HTTP POST
+  // Send HTTPS POST
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    http.begin(tempServerUrl);
+    http.begin(secureClient, tempServerUrl);
+    http.setTimeout(15000); // 15 second timeout
     http.addHeader("Content-Type", "application/json");
     
     int httpResponseCode = http.POST(jsonPayload);
@@ -291,10 +300,11 @@ void sendHumidityData() {
   Serial.printf("\n📤 Sending Humidity (%d sensors):\n", validSensors);
   Serial.println(jsonPayload);
   
-  // Send HTTP POST
+  // Send HTTPS POST
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    http.begin(humidServerUrl);
+    http.begin(secureClient, humidServerUrl);
+    http.setTimeout(15000); // 15 second timeout
     http.addHeader("Content-Type", "application/json");
     
     int httpResponseCode = http.POST(jsonPayload);

@@ -19,6 +19,7 @@
  */
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include "HX711.h"
@@ -28,9 +29,13 @@ const char* ssid = "UHAMKA-FTII";           // Ganti dengan SSID WiFi Anda
 const char* password = "buyahamka123";      // Ganti dengan password WiFi Anda
 
 // ========== KONFIGURASI SERVER ==========
-const char* waterLevelUrl = "http://10.10.53.162:3000/api/esp32/waterlevel";
-const char* waterWeightUrl = "http://10.10.53.162:3000/api/esp32/waterweight";
-const char* valveStatusUrl = "http://10.10.53.162:3000/api/esp32/valve";
+// Railway Production Backend (HTTPS)
+const char* waterLevelUrl = "https://iot-desalinasi-production.up.railway.app/api/esp32/waterlevel";
+const char* waterWeightUrl = "https://iot-desalinasi-production.up.railway.app/api/esp32/waterweight";
+const char* valveStatusUrl = "https://iot-desalinasi-production.up.railway.app/api/esp32/valve";
+
+// WiFi Secure Client untuk HTTPS
+WiFiClientSecure secureClient;
 
 // ========== PIN DEFINITIONS ==========
 #define TRIG_PIN   5
@@ -118,11 +123,15 @@ void setup() {
   connectWiFi();
   
   Serial.println("\n✓ Setup completed!");
-  Serial.println("Starting monitoring...\n");
+  Serial.println("Starting monitoring...");
+  Serial.println("📡 Sending to: Railway Production Backend");
   Serial.println("Valve Thresholds:");
   Serial.printf("  - OFF when distance <= %.1f cm (air tinggi)\n", VALVE_OFF_THRESHOLD);
   Serial.printf("  - ON  when distance >= %.1f cm (air rendah)\n", VALVE_ON_THRESHOLD);
   Serial.println("");
+  
+  // Setup HTTPS client (skip certificate verification)
+  secureClient.setInsecure();
 }
 
 // ========== MAIN LOOP ==========
@@ -265,7 +274,8 @@ void sendDataToServer() {
   String jsonLevel;
   serializeJson(docLevel, jsonLevel);
   
-  http.begin(waterLevelUrl);
+  http.begin(secureClient, waterLevelUrl);
+  http.setTimeout(15000);
   http.addHeader("Content-Type", "application/json");
   int codeLevel = http.POST(jsonLevel);
   
@@ -288,7 +298,8 @@ void sendDataToServer() {
   String jsonWeight;
   serializeJson(docWeight, jsonWeight);
   
-  http.begin(waterWeightUrl);
+  http.begin(secureClient, waterWeightUrl);
+  http.setTimeout(15000);
   http.addHeader("Content-Type", "application/json");
   int codeWeight = http.POST(jsonWeight);
   
@@ -307,7 +318,8 @@ void sendDataToServer() {
   String jsonValve;
   serializeJson(docValve, jsonValve);
   
-  http.begin(valveStatusUrl);
+  http.begin(secureClient, valveStatusUrl);
+  http.setTimeout(15000);
   http.addHeader("Content-Type", "application/json");
   int codeValve = http.POST(jsonValve);
   
