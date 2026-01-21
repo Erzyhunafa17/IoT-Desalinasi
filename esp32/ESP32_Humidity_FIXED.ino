@@ -1,17 +1,17 @@
 /**
  * ESP32 #2 - Humidity & Temperature Sensors (DHT)
- * Monitors 7 DHT22 sensors for humidity and temperature
+ * Monitors 6 DHT22 sensors + 1 DHT11 sensor for humidity and temperature
  * Sends temperature data as T1-T6 + T14
  * Sends humidity data as RH1-RH7
  * 
  * Pin Configuration:
- * - Sensor 1 = GPIO 4   -> T1/RH1
- * - Sensor 2 = GPIO 16  -> T2/RH2
- * - Sensor 3 = GPIO 17  -> T3/RH3
- * - Sensor 4 = GPIO 18  -> T4/RH4
- * - Sensor 5 = GPIO 19  -> T5/RH5
- * - Sensor 6 = GPIO 21  -> T6/RH6
- * - Sensor 7 = GPIO 22  -> T14/RH7
+ * - Sensor 1 = GPIO 4   -> T1/RH1 (DHT11)
+ * - Sensor 2 = GPIO 16  -> T2/RH2 (DHT22)
+ * - Sensor 3 = GPIO 17  -> T3/RH3 (DHT22)
+ * - Sensor 4 = GPIO 18  -> T4/RH4 (DHT22)
+ * - Sensor 5 = GPIO 19  -> T5/RH5 (DHT22)
+ * - Sensor 6 = GPIO 21  -> T6/RH6 (DHT22)
+ * - Sensor 7 = GPIO 22  -> T14/RH7 (DHT22)
  * 
  * Library yang dibutuhkan:
  * - DHT sensor library by Adafruit
@@ -47,16 +47,18 @@ WiFiClientSecure secureClient;
 #define PIN_SENSOR7  22   // T14/RH7
 
 // ========== DHT CONFIGURATION ==========
-#define DHTTYPE DHT22  // atau DHT11 jika menggunakan DHT11
+#define DHTTYPE_DHT11 DHT11  // Untuk sensor 1 (GPIO 4)
+#define DHTTYPE_DHT22 DHT22  // Untuk sensor 2-7
 
 // Create DHT instances
-DHT dht1(PIN_SENSOR1, DHTTYPE);
-DHT dht2(PIN_SENSOR2, DHTTYPE);
-DHT dht3(PIN_SENSOR3, DHTTYPE);
-DHT dht4(PIN_SENSOR4, DHTTYPE);
-DHT dht5(PIN_SENSOR5, DHTTYPE);
-DHT dht6(PIN_SENSOR6, DHTTYPE);
-DHT dht7(PIN_SENSOR7, DHTTYPE);
+// Sensor 1 menggunakan DHT11, sensor lainnya DHT22
+DHT dht1(PIN_SENSOR1, DHTTYPE_DHT11);  // DHT11 pada GPIO 4
+DHT dht2(PIN_SENSOR2, DHTTYPE_DHT22);
+DHT dht3(PIN_SENSOR3, DHTTYPE_DHT22);
+DHT dht4(PIN_SENSOR4, DHTTYPE_DHT22);
+DHT dht5(PIN_SENSOR5, DHTTYPE_DHT22);
+DHT dht6(PIN_SENSOR6, DHTTYPE_DHT22);
+DHT dht7(PIN_SENSOR7, DHTTYPE_DHT22);
 
 // Timing
 unsigned long lastSendTime = 0;
@@ -80,7 +82,7 @@ void setup() {
   
   Serial.println("\n\n=============================================");
   Serial.println("ESP32 Humidity & Temperature Sensor System");
-  Serial.println("(7x DHT22 Sensors)");
+  Serial.println("(1x DHT11 + 6x DHT22 Sensors)");
   Serial.println("=============================================\n");
   
   // Initialize DHT sensors
@@ -94,13 +96,13 @@ void setup() {
   dht7.begin();
   
   Serial.println("✓ DHT Sensors initialized");
-  Serial.println("  - Sensor 1 (GPIO 4)  -> T1/RH1");
-  Serial.println("  - Sensor 2 (GPIO 16) -> T2/RH2");
-  Serial.println("  - Sensor 3 (GPIO 17) -> T3/RH3");
-  Serial.println("  - Sensor 4 (GPIO 18) -> T4/RH4");
-  Serial.println("  - Sensor 5 (GPIO 19) -> T5/RH5");
-  Serial.println("  - Sensor 6 (GPIO 21) -> T6/RH6");
-  Serial.println("  - Sensor 7 (GPIO 22) -> T14/RH7");
+  Serial.println("  - Sensor 1 (GPIO 4)  -> T1/RH1 [DHT11]");
+  Serial.println("  - Sensor 2 (GPIO 16) -> T2/RH2 [DHT22]");
+  Serial.println("  - Sensor 3 (GPIO 17) -> T3/RH3 [DHT22]");
+  Serial.println("  - Sensor 4 (GPIO 18) -> T4/RH4 [DHT22]");
+  Serial.println("  - Sensor 5 (GPIO 19) -> T5/RH5 [DHT22]");
+  Serial.println("  - Sensor 6 (GPIO 21) -> T6/RH6 [DHT22]");
+  Serial.println("  - Sensor 7 (GPIO 22) -> T14/RH7 [DHT22]");
   Serial.println("");
   
   // Connect to WiFi
@@ -230,8 +232,11 @@ void sendTemperatureData() {
   int validSensors = 0;
   
   // Only send valid readings (not NaN and within range)
+  // DHT11 (sensor 1): 0-50°C, DHT22 (sensor 2-7): -40-80°C
   for (int i = 0; i < 7; i++) {
-    if (!isnan(temperatures[i]) && temperatures[i] > -40 && temperatures[i] < 80) {
+    float minTemp = (i == 0) ? 0 : -40;   // DHT11 min 0°C, DHT22 min -40°C
+    float maxTemp = (i == 0) ? 50 : 80;   // DHT11 max 50°C, DHT22 max 80°C
+    if (!isnan(temperatures[i]) && temperatures[i] > minTemp && temperatures[i] < maxTemp) {
       doc[tempLabels[i]] = temperatures[i];
       validSensors++;
     }

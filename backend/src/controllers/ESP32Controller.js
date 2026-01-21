@@ -182,7 +182,7 @@ const ESP32Controller = {
     /**
      * Receive water level data from ESP32
      * POST /api/esp32/waterlevel
-     * Body: { "WL1": 75 }
+     * Body: { "WL1": 75, "distance": 12.34 }
      */
     async receiveWaterLevel(req, res) {
         try {
@@ -196,15 +196,23 @@ const ESP32Controller = {
                 return res.status(400).json({
                     success: false,
                     error: 'No water level data received',
-                    expected: '{ "WL1": 75 }'
+                    expected: '{ "WL1": 75, "distance": 12.34 }'
                 });
             }
 
             const validSensors = [];
             const invalidSensors = [];
 
+            // Extract distance value (raw ultrasonic reading in cm)
+            const distanceValue = data.distance;
+
             // Process each sensor reading
             for (const [sensorId, value] of Object.entries(data)) {
+                // Skip 'distance' field - it's not a sensor ID
+                if (sensorId === 'distance') {
+                    continue;
+                }
+
                 // Validate sensor ID format (WL1)
                 if (!/^WL[1-9]$/.test(sensorId)) {
                     invalidSensors.push({ sensorId, reason: 'Invalid sensor ID format' });
@@ -223,22 +231,22 @@ const ESP32Controller = {
                     continue;
                 }
 
-                // Update real-time cache
-                // Update real-time cache
+                // Update real-time cache with distance included
                 realtimeCache.waterLevel[sensorId] = {
                     value: value,
+                    distance: distanceValue || null,  // Raw distance in cm
                     timestamp: timestamp,
                     receivedAt: Date.now(),
                     status: 'active'
                 };
 
-                validSensors.push({ sensorId, value });
+                validSensors.push({ sensorId, value, distance: distanceValue });
             }
 
             // Update last update timestamp
             realtimeCache.lastUpdate = timestamp;
 
-            console.log(`[ESP32] Water Level: ${validSensors.length} valid, ${invalidSensors.length} invalid`);
+            console.log(`[ESP32] Water Level: ${validSensors.length} valid, ${invalidSensors.length} invalid, distance: ${distanceValue} cm`);
 
             res.json({
                 success: true,
@@ -247,6 +255,7 @@ const ESP32Controller = {
                 cached: true,
                 timestamp: timestamp,
                 sensors: validSensors,
+                distance: distanceValue,
                 invalid: invalidSensors.length > 0 ? invalidSensors : undefined
             });
 
@@ -423,9 +432,11 @@ const ESP32Controller = {
             }
         }
 
-        // Process water level data
+        // Process water level data (including distance)
+        response.waterLevelDistance = {};  // Add distance data
         for (const [sensorId, data] of Object.entries(realtimeCache.waterLevel)) {
             response.waterLevel[sensorId] = data.value;
+            response.waterLevelDistance[sensorId] = data.distance || null;  // Raw distance in cm
             response.sensorStatus.waterLevel[sensorId] = data.status === 'active';
         }
 

@@ -152,11 +152,11 @@ CREATE DATABASE IF NOT EXISTS iot_desalinasi;
 
 ```env
 # Database Connection (dari MySQL service)
-DB_HOST=containers-us-west-xxx.railway.app
-DB_PORT=6872
+DB_HOST=mysql.railway.internal
+DB_PORT=3306
 DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=railway
+DB_PASSWORD=rOnddDndfHSOsNxHsRrwhVXiEpwiUxug
+DB_NAME=iot_desalinasi
 
 # Server Config
 PORT=3000

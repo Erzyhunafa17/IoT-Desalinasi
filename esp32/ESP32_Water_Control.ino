@@ -51,11 +51,11 @@ WiFiClientSecure secureClient;
 // ========== SENSOR CONSTANTS ==========
 // Ultrasonic - Tinggi tangki untuk perhitungan persentase
 const float TANK_HEIGHT_CM = 100.0; // Tinggi tangki total (cm) - SESUAIKAN!
-const float SENSOR_OFFSET_CM = 5.0; // Jarak sensor ke permukaan air saat PENUH (cm)
+const float SENSOR_OFFSET_CM = 7.0; // Jarak sensor ke permukaan air saat PENUH (cm)
 
 // Valve Hysteresis Thresholds (dalam cm)
-const float VALVE_OFF_THRESHOLD = 5.0;  // Jarak <= 5 cm -> Air tinggi, valve OFF
-const float VALVE_ON_THRESHOLD = 6.0;   // Jarak >= 6 cm -> Air rendah, valve ON
+const float VALVE_OFF_THRESHOLD = 7.0;  // Jarak <= 7 cm -> Air tinggi, valve OFF
+const float VALVE_ON_THRESHOLD = 8.0;   // Jarak >= 8 cm -> Air rendah, valve ON
 
 // Load Cell
 HX711 scale;
@@ -268,9 +268,10 @@ void sendDataToServer() {
   if (waterLevelPercent < 0) waterLevelPercent = 0;
   if (waterLevelPercent > 100) waterLevelPercent = 100;
   
-  // --- 1. Send Water Level (WL1) ---
+  // --- 1. Send Water Level (WL1) + Distance ---
   StaticJsonDocument<200> docLevel;
   docLevel["WL1"] = waterLevelPercent;
+  docLevel["distance"] = jarak;  // Raw ultrasonic reading in cm
   String jsonLevel;
   serializeJson(docLevel, jsonLevel);
   
@@ -280,7 +281,7 @@ void sendDataToServer() {
   int codeLevel = http.POST(jsonLevel);
   
   if (codeLevel == 200) {
-    Serial.printf("✓ Level sent: %.2f%%\n", waterLevelPercent);
+    Serial.printf("✓ Level sent: %.2f%% (distance: %.2f cm)\n", waterLevelPercent, jarak);
   } else {
     Serial.printf("✗ Level failed: %d\n", codeLevel);
   }
