@@ -207,15 +207,18 @@ const SensorController = {
                 }
             }
 
-            // Process water level data
+            // Process water level data (including distance)
+            const waterLevelDistance = {};
             for (const [sensorId, data] of Object.entries(cache.waterLevel || {})) {
                 realtimeData.waterLevel[sensorId] = data.value;
+                waterLevelDistance[sensorId] = data.distance || null; // Raw distance in cm
                 sensorStatus.waterLevel[sensorId] = data.status === 'active';
             }
 
             res.json({
                 realtimeData,
                 sensorStatus,
+                waterLevelDistance, // Raw ultrasonic distance in cm
                 pumpStatus: cache.valveStatus?.status === 'open', // Valve open = pump on
                 valveStatus: cache.valveStatus?.status || 'closed', // Send valve status
                 waterWeight: cache.waterWeight?.WW1?.value ?? null, // Get WW1 value if available

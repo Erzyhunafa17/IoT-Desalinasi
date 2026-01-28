@@ -10,7 +10,7 @@ import { Thermometer, Droplets, AlertTriangle, AlertOctagon, X, CheckCircle, XCi
 
 const Dashboard = () => {
     // Get Realtime Data Stream, Sensor Status, and Pump Status
-    const { realtimeData, sensorStatus, pumpStatus, waterWeight } = useLogger();
+    const { realtimeData, sensorStatus, pumpStatus, waterWeight, waterLevelDistance } = useLogger();
 
     // Defensive check to avoid runtime errors
     const isWaterWeightActive = waterWeight !== null && waterWeight !== undefined;
@@ -501,6 +501,7 @@ const Dashboard = () => {
                     {/* Card 3: Water Level */}
                     <WaterLevelCard
                         value={currentWaterLevelValue}
+                        distance={waterLevelDistance?.[selectedWaterLevel] ?? null}
                         status={sensorStatus?.waterLevel?.[selectedWaterLevel] ?? true}
                         pumpStatus={pumpStatus}
                     />

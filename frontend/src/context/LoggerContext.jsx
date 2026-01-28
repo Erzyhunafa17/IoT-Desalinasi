@@ -53,6 +53,9 @@ export const LoggerProvider = ({ children }) => {
     // Water Weight Result (grams)
     const [waterWeight, setWaterWeight] = useState(0);
 
+    // Water Level Distance (raw ultrasonic reading in cm)
+    const [waterLevelDistance, setWaterLevelDistance] = useState({});
+
     // Last update timestamps for detecting inactive sensors
     const lastUpdateRef = useRef({
         humidity: {},
@@ -93,6 +96,7 @@ export const LoggerProvider = ({ children }) => {
                 setSensorStatus(data.sensorStatus);
                 setPumpStatus(data.pumpStatus);
                 setWaterWeight(data.waterWeight);
+                setWaterLevelDistance(data.waterLevelDistance || {});
 
                 // Update last update timestamps
                 const now = Date.now();
@@ -188,7 +192,8 @@ export const LoggerProvider = ({ children }) => {
             sensorStatus,
             pumpStatus,
             setPumpStatus,
-            waterWeight
+            waterWeight,
+            waterLevelDistance
         }}>
             {children}
         </LoggerContext.Provider>
