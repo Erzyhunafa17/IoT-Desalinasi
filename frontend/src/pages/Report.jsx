@@ -10,6 +10,7 @@ const Report = () => {
     const [selectedHumiditySensor, setSelectedHumiditySensor] = useState('all');
     const [selectedAirTempSensor, setSelectedAirTempSensor] = useState('all');
     const [selectedWaterTempSensor, setSelectedWaterTempSensor] = useState('all');
+    const [selectedWaterLevelSensor, setSelectedWaterLevelSensor] = useState('none');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -54,6 +55,7 @@ const Report = () => {
     const humidityOptions = Array.from({ length: 7 }, (_, i) => ({ value: `RH${i + 1}`, label: `RH${i + 1}` }));
     const airTempOptions = Array.from({ length: 7 }, (_, i) => ({ value: `T${i + 1}`, label: `T${i + 1}` }));
     const waterTempOptions = Array.from({ length: 8 }, (_, i) => ({ value: `T${i + 8}`, label: `T${i + 8}` }));
+    const waterLevelOptions = [{ value: 'WL1', label: 'WL1' }];
 
     // Define ALL expected sensors for status display
     const allHumiditySensors = ['RH1', 'RH2', 'RH3', 'RH4', 'RH5', 'RH6', 'RH7'];
@@ -110,7 +112,7 @@ const Report = () => {
         const sensorConfig = {
             humidity: selectedHumiditySensor === 'none' ? 'none' : selectedHumiditySensor,
             temperature: tempConfig,
-            waterLevel: 'none'
+            waterLevel: selectedWaterLevelSensor === 'none' ? 'none' : selectedWaterLevelSensor
         };
 
         console.log('[Report] Starting logger with config:', sensorConfig);
@@ -253,8 +255,18 @@ const Report = () => {
         return true;
     });
 
+    // Add water level filter support
+    const finalFilteredData = filteredData.filter(item => {
+        if (item.sensor_type === 'waterLevel') {
+            if (selectedWaterLevelSensor === 'none') return false;
+            if (selectedWaterLevelSensor !== 'all' && item.sensor_id !== selectedWaterLevelSensor) return false;
+            return true;
+        }
+        return true;
+    });
+
     const handleExport = () => {
-        if (filteredData.length === 0) {
+        if (finalFilteredData.length === 0) {
             const intervalSeconds = Math.floor(logInterval / 1000);
             showAlert(
                 'Data Kosong',
@@ -268,7 +280,7 @@ const Report = () => {
         const headers = ['ID', 'Sensor ID', 'Type', 'Value', 'Unit', 'Status', 'Interval (s)', 'Timestamp'];
         const csvContent = [
             headers.join(','),
-            ...filteredData.map(row => [
+            ...finalFilteredData.map(row => [
                 row.id,
                 row.sensor_id,
                 row.sensor_type,
@@ -851,7 +863,27 @@ const Report = () => {
                         </div>
                     </div>
 
-                    {/* Water Level Sensor Filter - REMOVED */}
+                    {/* Water Level Sensor Filter */}
+                    <div className="flex-1 min-w-[200px]">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Sensor Water Level
+                        </label>
+                        <div className="relative">
+                            <Waves className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-400" size={18} />
+                            <select
+                                className="w-full pl-10 pr-4 py-2.5 border border-teal-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none appearance-none bg-teal-50 text-gray-700 font-medium"
+                                value={selectedWaterLevelSensor}
+                                onChange={(e) => setSelectedWaterLevelSensor(e.target.value)}
+                            >
+                                <option value="none">None (Tidak Log)</option>
+                                <option value="all">Semua Water Level</option>
+                                {waterLevelOptions.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-teal-400 pointer-events-none" size={18} />
+                        </div>
+                    </div>
 
                     {/* Start Date */}
                     <div className="flex-1 min-w-[200px]">
@@ -893,7 +925,7 @@ const Report = () => {
             {/* Data Count */}
             <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-gray-600">
-                    Menampilkan <span className="font-bold">{filteredData.length}</span> data (dari total {data.length})
+                    Menampilkan <span className="font-bold">{finalFilteredData.length}</span> data (dari total {data.length})
                 </p>
                 {loading && <p className="text-sm text-blue-600">Loading...</p>}
             </div>
@@ -914,20 +946,20 @@ const Report = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {filteredData.length === 0 ? (
+                            {finalFilteredData.length === 0 ? (
                                 <tr>
                                     <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                                         Tidak ada data untuk filter yang dipilih.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredData.map((row) => (
+                                finalFilteredData.map((row) => (
                                     <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
                                             {new Date(row.timestamp).toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`text-lg font-bold ${row.sensor_type === 'humidity' ? 'text-blue-600' : row.sensor_type === 'temperature' ? 'text-orange-600' : 'text-cyan-600'}`}>
+                                            <span className={`text-lg font-bold ${row.sensor_type === 'humidity' ? 'text-blue-600' : row.sensor_type === 'temperature' ? 'text-orange-600' : row.sensor_type === 'waterLevel' ? 'text-teal-600' : 'text-cyan-600'}`}>
                                                 {row.sensor_id}
                                             </span>
                                         </td>
@@ -935,11 +967,13 @@ const Report = () => {
                                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${row.sensor_type === 'humidity' ? 'bg-blue-100 text-blue-700' :
                                                 row.sensor_type === 'temperature' && parseInt(row.sensor_id.replace('T', '')) <= 7 ? 'bg-orange-100 text-orange-700' :
                                                     row.sensor_type === 'temperature' ? 'bg-cyan-100 text-cyan-700' :
-                                                        'bg-gray-100 text-gray-700'
+                                                        row.sensor_type === 'waterLevel' ? 'bg-teal-100 text-teal-700' :
+                                                            'bg-gray-100 text-gray-700'
                                                 }`}>
                                                 {row.sensor_type === 'humidity' ? 'Kelembapan' :
                                                     row.sensor_type === 'temperature' && parseInt(row.sensor_id.replace('T', '')) <= 7 ? 'Suhu Udara' :
-                                                        row.sensor_type === 'temperature' ? 'Suhu Air' : 'Water Level'}
+                                                        row.sensor_type === 'temperature' ? 'Suhu Air' :
+                                                            row.sensor_type === 'waterLevel' ? 'Water Level' : 'Unknown'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 font-medium text-gray-800">
